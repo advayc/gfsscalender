@@ -5,6 +5,12 @@ import { Calendar as CalendarIcon, Clock, Repeat, PlusCircle, Save, Trash2, Exte
 import toast, { Toaster } from 'react-hot-toast';
 import { Event, Club } from '@/types';
 
+// Extended Event type for display purposes
+interface DisplayEvent extends Event {
+  _seriesCount?: number;
+  _seriesEvents?: Event[];
+}
+
 interface AdminPanelProps {
   events: Event[];
   clubs: Club[];
@@ -15,7 +21,7 @@ interface AdminPanelProps {
   onAddClub?: (club: { name: string; slug?: string; color?: string }) => Promise<Club | undefined> | void;
   onDeleteClub?: (clubId: string) => void;
   onDeleteEventSeries?: (title: string, clubId: string, frequency: string) => Promise<void>;
-  onUpdateEventSeries?: (title: string, clubId: string, frequency: string, changes: Partial<Event>) => Promise<any>;
+  onUpdateEventSeries?: (title: string, clubId: string, frequency: string, changes: Partial<Event>) => Promise<unknown>;
   theme?: 'light' | 'dark';
 }
 
@@ -92,7 +98,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
     const seriesEvents = getSeriesEvents(event);
     const isRecurring = seriesEvents.length > 1;
     
-    let confirmMessage = isRecurring 
+    const confirmMessage = isRecurring 
       ? `Delete entire "${event.title}" series (${seriesEvents.length} events)?`
       : 'Delete event?';
     
@@ -108,7 +114,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
           onDeleteEvent(event.id);
           toast.success('Deleted event');
         }
-      } catch (error) {
+      } catch {
         toast.error('Failed to delete series');
       }
     }
@@ -615,7 +621,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
                                       // Note: We don't update date for series to maintain the recurrence pattern
                                     });
                                     toast.success('Updated entire series');
-                                  } catch (error) {
+                                  } catch {
                                     toast.error('Failed to update series');
                                   }
                                 } else {
@@ -664,9 +670,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
                       <div className="flex-1 min-w-0">
                         <div className={`font-medium truncate ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>
                           {event.title}
-                          {(event as any)._seriesCount > 1 && (
+                          {(event as DisplayEvent)._seriesCount && (event as DisplayEvent)._seriesCount! > 1 && (
                             <span className={`ml-2 text-xs px-2 py-1 rounded ${isLight ? 'bg-blue-100 text-blue-800' : 'bg-blue-900 text-blue-200'}`}>
-                              Series ({(event as any)._seriesCount})
+                              Series ({(event as DisplayEvent)._seriesCount})
                             </span>
                           )}
                         </div>

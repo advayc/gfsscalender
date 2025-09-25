@@ -51,7 +51,7 @@ export async function DELETE(req: NextRequest) {
     });
     
     // Delete all events in the series
-    const deletePromises = events.map((event: any) => 
+    const deletePromises = events.map((event: { id: string }) => 
       prisma.event.delete({ where: { id: event.id } })
     );
     
@@ -61,8 +61,9 @@ export async function DELETE(req: NextRequest) {
       success: true, 
       deletedCount: events.length 
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (e: unknown) {
+    const error = e as Error;
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
@@ -91,9 +92,10 @@ export async function PATCH(req: NextRequest) {
     });
     
     // Update all events in the series (excluding date to maintain recurrence pattern)  
-    const { date, ...safeUpdates } = updates;
+    const safeUpdates = { ...updates };
+    delete safeUpdates.date; // Remove date to avoid TypeScript unused variable warning
     
-    const updatePromises = events.map((event: any) => 
+    const updatePromises = events.map((event: { id: string }) => 
       prisma.event.update({ 
         where: { id: event.id }, 
         data: safeUpdates 
@@ -107,7 +109,8 @@ export async function PATCH(req: NextRequest) {
       updatedCount: updatedEvents.length,
       events: updatedEvents
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (e: unknown) {
+    const error = e as Error;
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
