@@ -17,21 +17,37 @@ const EventCard: React.FC<EventCardProps> = React.memo(({ event, club, onClick, 
   const timeDisplay = useMemo(() => formatEventTime(event.time), [event.time]);
 
   const isLight = theme === 'light';
+  const isSacEvent = club.name.toLowerCase().includes('sac');
+  
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`group relative w-full flex items-center text-[11px] leading-tight cursor-pointer select-none rounded-sm min-h-[16px] hover:brightness-105 transition ${isLight ? 'text-gray-800' : 'text-gray-200'}`}
-  title={`${event.title}${event.time ? ` - ${event.time}` : ''}${event.location ? ` @ ${event.location}` : ''}${event.description ? `\n${event.description}` : ''}`}
+      className={`group relative w-full flex items-center text-[11px] leading-tight cursor-pointer select-none rounded-sm min-h-[16px] hover:brightness-105 transition ${
+        isLight ? 'text-gray-800' : 'text-gray-200'
+      } ${
+        isSacEvent 
+          ? 'border-l-2 shadow-sm' 
+          : ''
+      }`}
       style={{ 
         backgroundColor: `${club.color}33`, // ~20% opacity
-        paddingLeft: '0px',
+        paddingLeft: isSacEvent ? '2px' : '0px',
         paddingRight: '4px',
         paddingTop: '2px',
-        paddingBottom: '2px'
+        paddingBottom: '2px',
+        borderLeftColor: isSacEvent ? club.color : 'transparent'
       }}
+      title={`${event.title}${event.time ? ` - ${event.time}` : ''}${event.location ? ` @ ${event.location}` : ''}${event.description ? `\n${event.description}` : ''}${isSacEvent ? '\n[SAC Event]' : ''}`}
     >
-      <span className={`truncate flex-1 font-medium ${isPrioritized ? 'font-bold' : ''} ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>{event.title}</span>
+      {isSacEvent && (
+        <span className="text-[9px] mr-1 font-bold opacity-80" style={{ color: club.color }}>
+          ★
+        </span>
+      )}
+      <span className={`truncate flex-1 ${isSacEvent ? 'font-bold' : 'font-medium'} ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>
+        {event.title}
+      </span>
       {timeDisplay && (
         <span className={`ml-2 text-[10px] tabular-nums ${isLight ? 'text-gray-500' : 'text-gray-300'}`}>
           {timeDisplay}
