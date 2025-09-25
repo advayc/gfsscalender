@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 import bcrypt from 'bcrypt';
 
 function isAuthorized(req: NextRequest) {
@@ -85,9 +87,11 @@ export async function POST(req: NextRequest) {
     return { headers, rows };
   };
 
-  const { headers, rows } = parseCsv(text);
-  const headerMap = headerMapRaw ? JSON.parse(headerMapRaw) as Record<string,string> : {};
-  const defaults = defaultsRaw ? JSON.parse(defaultsRaw) as Record<string, unknown> : {};
+  const { headers: _csvHeaders, rows } = parseCsv(text);
+  const headerMap = headerMapRaw ? (JSON.parse(headerMapRaw) as Record<string,string>) : {};
+  type ClubDefaults = { name?: string; slug?: string; color?: string };
+  type EventDefaults = { title?: string; date?: string; clubId?: string; time?: string; description?: string; location?: string };
+  const defaultsUnknown = defaultsRaw ? JSON.parse(defaultsRaw) as unknown : undefined;
 
   const mapValue = (row: Record<string,string>, keys: string[]): string => {
     for (const k of keys) {
@@ -107,7 +111,7 @@ export async function POST(req: NextRequest) {
     });
 
     const missingRequired = prepared
-      .map((p, idx) => ({ index: idx, missing: ['name'].filter(f => !(p as any)[f] && !(defaults as any)[f]) }))
+      .map((p, idx) => ({ index: idx, missing: ['name'].filter(f => !(p as Record<string, unknown>)[f] && !(defaults as Record<string, unknown>)[f]) }))
       .filter(m => m.missing.length > 0);
 
     const summary = { total: prepared.length, missing: missingRequired.length, missingRows: missingRequired };
@@ -115,16 +119,17 @@ export async function POST(req: NextRequest) {
 
     // finalize
     const created = [] as unknown[];
+    const defaults = (defaultsUnknown as ClubDefaults) || {};
     for (const p of prepared) {
-      const name = (p.name || (defaults as any).name) as string;
+      const name: string | undefined = p.name || defaults.name;
       if (!name) continue;
       const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      const finalSlug = p.slug?.trim() || (defaults as any).slug || slugify(name);
-      const color = (p.color?.trim() || (defaults as any).color || '#007AFF') as string;
+      const finalSlug: string = p.slug?.trim() || defaults.slug || slugify(name);
+      const color: string = (p.color?.trim() || defaults.color || '#007AFF');
       try {
         const c = await prisma.club.create({ data: { name, slug: finalSlug, color } });
         created.push(c);
-      } catch (e) {
+      } catch {
         // skip duplicates
       }
     }
@@ -148,14 +153,14 @@ export async function POST(req: NextRequest) {
     const missingRequired = prepared
       .map((p, idx) => ({
         index: idx,
-        missing: ['title', 'date'].filter(f => !(p as any)[f] && !(defaults as any)[f])
+        missing: ['title', 'date'].filter(f => !(p as Record<string, unknown>)[f] && !(defaults as Record<string, unknown>)[f])
       }))
       .filter(m => m.missing.length > 0);
 
     // Lookup clubs for mapping by slug or name
     const clubs = await prisma.club.findMany();
-    const slugToId = new Map(clubs.map(c => [c.slug.toLowerCase(), c.id] as const));
-    const nameToId = new Map(clubs.map(c => [c.name.toLowerCase(), c.id] as const));
+    const slugToId = new Map<string, string>(clubs.map((c: { slug: string; id: string }) => [c.slug.toLowerCase(), c.id]));
+    const nameToId = new Map<string, string>(clubs.map((c: { name: string; id: string }) => [c.name.toLowerCase(), c.id]));
 
     const resolved = prepared.map(p => {
       let resolvedClubId = p.clubId?.trim();
@@ -165,7 +170,7 @@ export async function POST(req: NextRequest) {
     });
 
     const stillMissingClub = resolved
-      .map((p, idx) => ({ index: idx, missing: ['clubId'].filter(f => !(p as any)[f] && !(defaults as any)[f]) }))
+      .map((p, idx) => ({ index: idx, missing: ['clubId'].filter(f => !(p as Record<string, unknown>)[f] && !(defaults as Record<string, unknown>)[f]) }))
       .filter(m => m.missing.length > 0);
 
     const summary = {
@@ -180,23 +185,32 @@ export async function POST(req: NextRequest) {
 
     // finalize
     let created = 0;
+    const defaults = (defaultsUnknown as EventDefaults) || {};
     for (const p of resolved) {
-      const title = (p.title || (defaults as any).title) as string | undefined;
-      const dateStr = (p.date || (defaults as any).date) as string | undefined;
-      const clubId = (p.clubId || (defaults as any).clubId) as string | undefined;
+      const title: string | undefined = p.title || defaults.title;
+      const dateStr: string | undefined = p.date || defaults.date;
+      const clubId: string | undefined = p.clubId || defaults.clubId;
       if (!title || !dateStr || !clubId) continue;
-      const data: any = {
+
+      const data: {
+        title: string;
+        date: Date;
+        clubId: string;
+        time: string | null;
+        description: string | null;
+        location: string | null;
+      } = {
         title,
         date: new Date(dateStr),
         clubId,
-        time: p.time || (defaults as any).time || null,
-        description: p.description || (defaults as any).description || null,
-        location: p.location || (defaults as any).location || null
+        time: (p.time || defaults.time || null),
+        description: (p.description || defaults.description || null),
+        location: (p.location || defaults.location || null)
       };
       try {
         await prisma.event.create({ data });
         created++;
-      } catch (e) {
+      } catch {
         // skip errors for now
       }
     }

@@ -75,7 +75,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
   const [importing, setImporting] = useState(false);
   const [importType, setImportType] = useState<'clubs' | 'events'>('events');
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [importSummary, setImportSummary] = useState<any | null>(null);
+  interface ImportSummaryRow { index: number; missing: string[] }
+  interface ImportSummaryPayload { summary?: { total: number; missing: number; missingRows: ImportSummaryRow[] }; sample?: unknown[]; created?: number }
+  const [importSummary, setImportSummary] = useState<ImportSummaryPayload | null>(null);
   const [importDefaults, setImportDefaults] = useState<{ [k: string]: string }>({});
   const [headerMap, setHeaderMap] = useState<{ [k: string]: string }>({});
 
@@ -193,8 +195,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
                     if (!res.ok) throw new Error(data?.error || 'Import failed');
                     setImportSummary(data);
                     toast.success('Dry-run completed');
-                  } catch (e: any) {
-                    toast.error(e.message || 'Dry-run failed');
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : 'Dry-run failed';
+                    toast.error(msg);
                   } finally {
                     setImporting(false);
                   }
@@ -218,8 +221,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
                     if (!res.ok) throw new Error(data?.error || 'Import failed');
                     toast.success(`Imported ${data.created || data.created?.length || 0}`);
                     setImportSummary(null);
-                  } catch (e: any) {
-                    toast.error(e.message || 'Import failed');
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : 'Import failed';
+                    toast.error(msg);
                   } finally {
                     setImporting(false);
                   }
@@ -242,7 +246,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
               <div>Missing required: {importSummary?.summary?.missing ?? 0}</div>
               {Array.isArray(importSummary?.summary?.missingRows) && importSummary.summary.missingRows.length > 0 && (
                 <div className="mt-2 max-h-24 overflow-auto text-xs">
-                  {importSummary.summary.missingRows.slice(0, 10).map((m: any) => (
+                  {importSummary.summary.missingRows.slice(0, 10).map((m: ImportSummaryRow) => (
                     <div key={m.index}>Row {m.index + 2}: missing {m.missing.join(', ')}</div>
                   ))}
                   {importSummary.summary.missingRows.length > 10 && <div>…and more</div>}
@@ -255,6 +259,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
           )}
         </div>
       </div>
+
+      <div className={`p-4 rounded-lg ${sectionCard}`}>
         <h3 className={`text-lg font-medium mb-3 ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>Add New Event</h3>
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
@@ -521,8 +527,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
           />
         </div>
         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-          {displayedEvents.map(event => {
-            const club = clubs.find(c => c.id === event.clubId);
+          {displayedEvents.map((event) => {
+            const club = clubs.find((c) => c.id === event.clubId);
             return (
               <div key={event.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-md transition-colors ${listItem}`}>
                 {editingEvent === event.id ? (
@@ -568,9 +574,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
                       className={fieldClass()}
                     >
                       <option value="">Select Club</option>
-                      {clubs.map(club => (
-                        <option key={club.id} value={club.id}>{club.name}</option>
-                      ))}
+                        {clubs.map((club) => (
+                          <option key={club.id} value={club.id}>{club.name}</option>
+                        ))}
                     </select>
                     <div className="flex gap-2">
                       <button
