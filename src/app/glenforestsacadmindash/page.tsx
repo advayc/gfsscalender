@@ -115,8 +115,28 @@ const AdminPage: React.FC = () => {
 
   const handleUpdateEvent = useCallback(async (eventId: string, changes: Partial<Event>) => {
     if (adminToken) apiClient.setToken(adminToken);
-    try { const updated = await apiClient.patch<Event>('/api/events', { id: eventId, ...changes }); setEvents(prev => prev.map(e => e.id === eventId ? { ...e, ...updated, date: updated.date?.slice?.(0,10) || updated.date } : e)); } catch (err) { console.error('Update event failed', err); }
-  }, [adminToken]);
+    try { 
+      const updated = await apiClient.patch<Event>('/api/events', { id: eventId, ...changes }); 
+      
+      // Check if this is a recurring event
+      const event = events.find(e => e.id === eventId);
+      const isRecurring = event?.recurringEventId || event?.recurrence;
+      
+      if (isRecurring) {
+        // Update all events in the recurring series
+        const recurringEventId = event?.recurringEventId || eventId;
+        setEvents(prev => prev.map(e => {
+          if (e.id === recurringEventId || e.recurringEventId === recurringEventId) {
+            return { ...e, ...changes, date: changes.date?.slice?.(0,10) || e.date };
+          }
+          return e;
+        }));
+      } else {
+        // Update only the single event
+        setEvents(prev => prev.map(e => e.id === eventId ? { ...e, ...updated, date: updated.date?.slice?.(0,10) || updated.date } : e));
+      }
+    } catch (err) { console.error('Update event failed', err); }
+  }, [adminToken, events]);
 
   return (
     <div className={`min-h-screen p-4 sm:p-6 ${theme === 'light' ? 'bg-gray-50 text-gray-900' : 'bg-[#0b0c0d] text-gray-100'}`}>

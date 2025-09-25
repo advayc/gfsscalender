@@ -118,9 +118,36 @@ export async function PATCH(req: NextRequest) {
   const { id, ...updates } = body;
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
   try {
-  if (updates.date) updates.date = new Date(updates.date);
-    const event = await prisma.event.update({ where: { id }, data: updates });
-    return NextResponse.json(event);
+    if (updates.date) updates.date = new Date(updates.date);
+    
+    // Find the event to check if it's recurring
+    const event = await prisma.event.findUnique({ where: { id } });
+    if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    
+    const isRecurring = event.recurringEventId || event.recurrenceFrequency;
+    
+    if (isRecurring) {
+      // Update all events in the recurring series
+      const recurringEventId = event.recurringEventId || event.id;
+      
+      await prisma.event.updateMany({
+        where: {
+          OR: [
+            { id: recurringEventId },
+            { recurringEventId: recurringEventId }
+          ]
+        },
+        data: updates
+      });
+      
+      // Return the updated original event
+      const updatedEvent = await prisma.event.findUnique({ where: { id: recurringEventId } });
+      return NextResponse.json(updatedEvent);
+    } else {
+      // Update only the single event
+      const updatedEvent = await prisma.event.update({ where: { id }, data: updates });
+      return NextResponse.json(updatedEvent);
+    }
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

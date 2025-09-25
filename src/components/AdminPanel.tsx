@@ -75,6 +75,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
     isSacPriority: false
   });
 
+  const [searchQuery, setSearchQuery] = useState('');
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newEvent.title && newEvent.date && newEvent.clubId) {
@@ -410,14 +412,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
       </div>
 
       <div className={`p-4 rounded-lg ${sectionCard}`}>
-        <h3 className={`text-lg font-medium mb-3 ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>Existing Events</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+          <h3 className={`text-lg font-medium ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>Existing Events</h3>
+          <div className="flex-1 max-w-sm">
+            <input
+              type="text"
+              placeholder="Search events..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={`${fieldClass(true)} text-sm`}
+            />
+          </div>
+        </div>
         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
           {(() => {
+            // Filter events by search query first
+            const filteredEvents = events.filter(event => 
+              event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              event.location?.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+            
             // Group recurring events by their recurringEventId or id
             const groupedEvents = new Map<string, Event[]>();
             const singleEvents: Event[] = [];
             
-            events.forEach(event => {
+            filteredEvents.forEach(event => {
               if (event.recurringEventId || event.recurrence) {
                 // This is a recurring event
                 const groupId = event.recurringEventId || event.id;
