@@ -104,6 +104,41 @@ const AdminPage: React.FC = () => {
     try { const updated = await apiClient.patch<Event>('/api/events', { id: eventId, ...changes }); setEvents(prev => prev.map(e => e.id === eventId ? { ...e, ...updated, date: updated.date?.slice?.(0,10) || updated.date } : e)); } catch (err) { console.error('Update event failed', err); }
   }, [adminToken]);
 
+  // New function to handle series deletion
+  const handleDeleteEventSeries = useCallback(async (title: string, clubId: string, frequency: string) => {
+    if (adminToken) apiClient.setToken(adminToken);
+    try { 
+      await apiClient.delete(`/api/events/series?title=${encodeURIComponent(title)}&clubId=${clubId}&frequency=${frequency}`); 
+      // Remove all events in the series from state
+      setEvents(prev => prev.filter(e => {
+        const eFreq = e.recurrence?.frequency || e.recurrenceFrequency || '';
+        const matches = e.title === title && e.clubId === clubId && eFreq.toLowerCase() === frequency.toLowerCase();
+        return !matches;
+      })); 
+    } catch (err) { 
+      console.error('Delete series failed', err); 
+      throw err;
+    }
+  }, [adminToken]);
+
+  // New function to handle series updates
+  const handleUpdateEventSeries = useCallback(async (title: string, clubId: string, frequency: string, changes: Partial<Event>) => {
+    if (adminToken) apiClient.setToken(adminToken);
+    try { 
+      const response = await apiClient.patch('/api/events/series', { title, clubId, frequency, updates: changes });
+      // Update all events in the series in state
+      setEvents(prev => prev.map(e => {
+        const eFreq = e.recurrence?.frequency || e.recurrenceFrequency || '';
+        const matches = e.title === title && e.clubId === clubId && eFreq.toLowerCase() === frequency.toLowerCase();
+        return matches ? { ...e, ...changes, date: e.date } : e; // Keep original date for each event
+      }));
+      return response;
+    } catch (err) { 
+      console.error('Update series failed', err); 
+      throw err;
+    }
+  }, [adminToken]);
+
   return (
     <div className={`min-h-screen p-4 sm:p-6 ${theme === 'light' ? 'bg-gray-50 text-gray-900' : 'bg-[#0b0c0d] text-gray-100'}`}>
       <div className="max-w-5xl mx-auto">
@@ -121,7 +156,19 @@ const AdminPage: React.FC = () => {
                 <button onClick={handleLogout} className="px-3 py-1 rounded border text-sm">Logout</button>
               </div>
             </div>
-            <AdminPanel events={events} clubs={clubs} onAddEvent={handleAddEvent} onDeleteEvent={handleDeleteEvent} onUpdateClub={handleUpdateClub} onUpdateEvent={handleUpdateEvent} onAddClub={handleAddClub} onDeleteClub={handleDeleteClub} theme={theme} />
+            <AdminPanel 
+              events={events} 
+              clubs={clubs} 
+              onAddEvent={handleAddEvent} 
+              onDeleteEvent={handleDeleteEvent} 
+              onUpdateClub={handleUpdateClub} 
+              onUpdateEvent={handleUpdateEvent} 
+              onAddClub={handleAddClub} 
+              onDeleteClub={handleDeleteClub} 
+              onDeleteEventSeries={handleDeleteEventSeries}
+              onUpdateEventSeries={handleUpdateEventSeries}
+              theme={theme} 
+            />
           </div>
         )}
       </div>
