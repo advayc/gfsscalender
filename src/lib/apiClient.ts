@@ -39,6 +39,20 @@ export class ApiClient {
     return res.json() as Promise<T>;
   }
 
+  async postForm<T = unknown>(path: string, form: FormData): Promise<T> {
+    const headers: HeadersInit = {};
+    if (this.token) (headers as Record<string,string>)['Authorization'] = `Bearer ${this.token}`;
+    const res = await fetch(this.base + path, { method: 'POST', headers, body: form });
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      const msg = t || res.statusText || `HTTP ${res.status}`;
+      const err = new Error(msg) as Error & { status?: number };
+      err.status = res.status;
+      throw err;
+    }
+    return res.json() as Promise<T>;
+  }
+
   async patch<T = unknown, B = unknown>(path: string, body?: B): Promise<T> {
     const res = await fetch(this.base + path, { method: 'PATCH', headers: this.headers(), body: JSON.stringify(body) });
     if (!res.ok) {

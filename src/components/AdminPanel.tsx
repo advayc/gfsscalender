@@ -72,6 +72,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
     count: ''
   });
   const [eventSearch, setEventSearch] = useState('');
+  const [importing, setImporting] = useState(false);
+  const [importType, setImportType] = useState<'clubs' | 'events'>('events');
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importSummary, setImportSummary] = useState<any | null>(null);
+  const [importDefaults, setImportDefaults] = useState<{ [k: string]: string }>({});
+  const [headerMap, setHeaderMap] = useState<{ [k: string]: string }>({});
 
   const displayedEvents = useMemo(() => {
     const q = eventSearch.trim().toLowerCase();
@@ -161,6 +167,94 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
       </button>
     </div>
       <div className={`p-4 rounded-lg ${sectionCard}`}>
+        <h3 className={`text-lg font-medium mb-3 ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>CSV Import</h3>
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+            <select className={fieldClass()} value={importType} onChange={(e) => setImportType(e.target.value as 'clubs' | 'events')}>
+              <option value="events">Events CSV</option>
+              <option value="clubs">Clubs CSV</option>
+            </select>
+            <input type="file" accept=".csv" className={fieldClass()} onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
+            <div className="flex gap-2 justify-end">
+              <button
+                disabled={!importFile || importing}
+                onClick={async () => {
+                  if (!importFile) return;
+                  try {
+                    setImporting(true);
+                    const form = new FormData();
+                    form.set('type', importType);
+                    form.set('file', importFile);
+                    form.set('dryRun', '1');
+                    if (Object.keys(importDefaults).length) form.set('defaults', JSON.stringify(importDefaults));
+                    if (Object.keys(headerMap).length) form.set('headerMap', JSON.stringify(headerMap));
+                    const res = await fetch('/api/import', { method: 'POST', body: form, headers: { 'Authorization': typeof window !== 'undefined' ? `Bearer ${localStorage.getItem('admin_token') || ''}` : '' } });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data?.error || 'Import failed');
+                    setImportSummary(data);
+                    toast.success('Dry-run completed');
+                  } catch (e: any) {
+                    toast.error(e.message || 'Dry-run failed');
+                  } finally {
+                    setImporting(false);
+                  }
+                }}
+                className={`${isLight ? 'bg-gray-200 hover:bg-gray-300 text-gray-800' : 'bg-[#222426] hover:bg-[#2a2c2f] text-gray-100'} px-3 py-2 rounded text-sm`}
+              >Dry-run</button>
+              <button
+                disabled={!importSummary || importing}
+                onClick={async () => {
+                  if (!importFile) return;
+                  try {
+                    setImporting(true);
+                    const form = new FormData();
+                    form.set('type', importType);
+                    form.set('file', importFile);
+                    form.set('dryRun', '0');
+                    if (Object.keys(importDefaults).length) form.set('defaults', JSON.stringify(importDefaults));
+                    if (Object.keys(headerMap).length) form.set('headerMap', JSON.stringify(headerMap));
+                    const res = await fetch('/api/import', { method: 'POST', body: form, headers: { 'Authorization': typeof window !== 'undefined' ? `Bearer ${localStorage.getItem('admin_token') || ''}` : '' } });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data?.error || 'Import failed');
+                    toast.success(`Imported ${data.created || data.created?.length || 0}`);
+                    setImportSummary(null);
+                  } catch (e: any) {
+                    toast.error(e.message || 'Import failed');
+                  } finally {
+                    setImporting(false);
+                  }
+                }}
+                className={`${isLight ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} px-3 py-2 rounded text-sm`}
+              >Finalize</button>
+            </div>
+          </div>
+          {importType === 'events' && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input className={fieldClass()} placeholder="Default clubId (if missing)" value={importDefaults.clubId || ''} onChange={(e) => setImportDefaults({ ...importDefaults, clubId: e.target.value })} />
+              <input className={fieldClass()} placeholder="Header map: title->title" value={headerMap['title'] || ''} onChange={(e) => setHeaderMap({ ...headerMap, title: e.target.value })} />
+              <input className={fieldClass()} placeholder="Header map: date->date" value={headerMap['date'] || ''} onChange={(e) => setHeaderMap({ ...headerMap, date: e.target.value })} />
+            </div>
+          )}
+          {importSummary && (
+            <div className={`${isLight ? 'bg-white border border-gray-200' : 'bg-[#1a1c1e] border border-[#2a2c2e]'} rounded p-3 text-sm`}>
+              <div className="font-medium mb-1">Dry-run summary</div>
+              <div>Total rows: {importSummary?.summary?.total ?? 0}</div>
+              <div>Missing required: {importSummary?.summary?.missing ?? 0}</div>
+              {Array.isArray(importSummary?.summary?.missingRows) && importSummary.summary.missingRows.length > 0 && (
+                <div className="mt-2 max-h-24 overflow-auto text-xs">
+                  {importSummary.summary.missingRows.slice(0, 10).map((m: any) => (
+                    <div key={m.index}>Row {m.index + 2}: missing {m.missing.join(', ')}</div>
+                  ))}
+                  {importSummary.summary.missingRows.length > 10 && <div>…and more</div>}
+                </div>
+              )}
+              {Array.isArray(importSummary?.sample) && (
+                <div className="mt-2 text-xs opacity-80">Sample: {JSON.stringify(importSummary.sample)}</div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
         <h3 className={`text-lg font-medium mb-3 ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>Add New Event</h3>
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
