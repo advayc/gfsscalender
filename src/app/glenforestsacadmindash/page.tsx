@@ -71,10 +71,24 @@ const AdminPage: React.FC = () => {
   } catch (err) { console.error('Add event failed', err); }
   }, [adminToken]);
 
-  const handleDeleteEvent = useCallback(async (eventId: string) => {
+  const handleDeleteEvent = useCallback(async (eventId: string, deleteAllFuture?: boolean) => {
     if (adminToken) apiClient.setToken(adminToken);
-    try { await apiClient.delete(`/api/events?id=${eventId}`); setEvents(prev => prev.filter(e => e.id !== eventId)); } catch (err) { console.error('Delete failed', err); }
-  }, [adminToken]);
+    try { 
+      const url = deleteAllFuture ? `/api/events?id=${eventId}&deleteAllFuture=true` : `/api/events?id=${eventId}`;
+      await apiClient.delete(url); 
+      
+      if (deleteAllFuture) {
+        // Find the original recurring event ID
+        const event = events.find(e => e.id === eventId);
+        const recurringEventId = event?.recurringEventId || eventId;
+        
+        // Remove all events in the recurring series
+        setEvents(prev => prev.filter(e => e.id !== recurringEventId && e.recurringEventId !== recurringEventId));
+      } else {
+        setEvents(prev => prev.filter(e => e.id !== eventId));
+      }
+    } catch (err) { console.error('Delete failed', err); }
+  }, [adminToken, events]);
 
   const handleAddClub = useCallback(async (club: { name: string; slug?: string; color?: string }) => {
     if (adminToken) apiClient.setToken(adminToken);

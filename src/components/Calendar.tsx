@@ -112,8 +112,27 @@ const Calendar: React.FC<CalendarProps> = ({ events, clubs, controlledDate, onDa
                 <div className="pt-3 sm:pt-4 space-y-[3px] overflow-hidden pr-1 sm:pr-2">
                   {(() => {
                     const maxVisible = 4;
-                    const visible = day.events.slice(0, maxVisible);
-                    const hiddenCount = day.events.length - visible.length;
+                    // Sort events: SAC priority first, then by time
+                    const sortedEvents = [...day.events].sort((a, b) => {
+                      // SAC priority events first
+                      if (a.isSacPriority && !b.isSacPriority) return -1;
+                      if (!a.isSacPriority && b.isSacPriority) return 1;
+                      
+                      // Then sort by time if both have time
+                      if (a.time && b.time) {
+                        return a.time.localeCompare(b.time);
+                      }
+                      
+                      // Events with time come before events without time
+                      if (a.time && !b.time) return -1;
+                      if (!a.time && b.time) return 1;
+                      
+                      // Finally sort by title alphabetically
+                      return a.title.localeCompare(b.title);
+                    });
+                    
+                    const visible = sortedEvents.slice(0, maxVisible);
+                    const hiddenCount = sortedEvents.length - visible.length;
                     return (
                       <>
                         {visible.map(event => {

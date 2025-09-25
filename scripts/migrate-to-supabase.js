@@ -60,6 +60,8 @@ async function main() {
       recurrenceInterval: e.recurrenceInterval || null,
       recurrenceCount: e.recurrenceCount || null,
       recurrenceUntil: e.recurrenceUntil || null,
+      isSacPriority: e.isSacPriority || false,
+      recurringEventId: e.recurringEventId || null,
       createdAt: e.createdAt,
       updatedAt: e.updatedAt
     };

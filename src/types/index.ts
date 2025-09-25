@@ -13,6 +13,8 @@ export interface Event {
   time?: string;
   description?: string;
   location?: string;
+  isSacPriority?: boolean; // SAC priority for spirit week events
+  recurringEventId?: string; // ID of the original recurring event
   recurrence?: {
     frequency: 'daily' | 'weekly' | 'biweekly' | 'monthly';
     interval: number; // every X weeks

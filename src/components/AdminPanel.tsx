@@ -9,7 +9,7 @@ interface AdminPanelProps {
   events: Event[];
   clubs: Club[];
   onAddEvent: (event: Omit<Event, 'id'>) => void;
-  onDeleteEvent: (id: string) => void;
+  onDeleteEvent: (id: string, deleteAllFuture?: boolean) => void;
   onUpdateClub?: (clubId: string, changes: Partial<Club>) => void;
   onUpdateEvent?: (eventId: string, changes: Partial<Event>) => void;
   onAddClub?: (club: { name: string; slug?: string; color?: string }) => Promise<Club | undefined> | void;
@@ -32,6 +32,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
     interval: number;
     until: string;
     count: string;
+    isSacPriority: boolean;
   }
 
   const [newEvent, setNewEvent] = useState<NewEventState>({
@@ -45,7 +46,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
     frequency: 'weekly',
     interval: 1,
     until: '',
-    count: ''
+    count: '',
+    isSacPriority: false
   });
 
   const [allDay, setAllDay] = useState(false);
@@ -69,7 +71,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
     frequency: 'weekly',
     interval: 1,
     until: '',
-    count: ''
+    count: '',
+    isSacPriority: false
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -82,6 +85,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
         description: newEvent.description || undefined,
         location: newEvent.location || undefined,
         clubId: newEvent.clubId,
+        isSacPriority: newEvent.isSacPriority,
         recurrence: newEvent.recurrence
           ? {
               frequency: newEvent.frequency || 'weekly',
@@ -106,6 +110,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
         interval: 1,
         until: '',
         count: '',
+        isSacPriority: false
       });
       } catch {
           toast.error('Failed to add event');
@@ -206,6 +211,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
               <option key={club.id} value={club.id}>{club.name}</option>
             ))}
           </select>
+          <div className="flex items-center gap-2">
+            <input
+              id="sacPriority"
+              type="checkbox"
+              checked={newEvent.isSacPriority}
+              onChange={(e) => setNewEvent({ ...newEvent, isSacPriority: e.target.checked })}
+            />
+            <label htmlFor="sacPriority" className={`text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+              ⭐ SAC Priority (Spirit Week Events)
+            </label>
+          </div>
           <div className={`space-y-3 pt-3 mt-2 ${isLight ? 'border-t border-gray-200' : 'border-t border-[#2a2c2e]'}`}>
             <label className={`flex items-center gap-2 text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
               <input
@@ -447,6 +463,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
                         <option key={club.id} value={club.id}>{club.name}</option>
                       ))}
                     </select>
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="editSacPriority"
+                        type="checkbox"
+                        checked={editEventData.isSacPriority}
+                        onChange={(e) => setEditEventData({ ...editEventData, isSacPriority: e.target.checked })}
+                      />
+                      <label htmlFor="editSacPriority" className={`text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+                        ⭐ SAC Priority (Spirit Week Events)
+                      </label>
+                    </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => {
@@ -458,7 +485,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
                                 time: editEventData.time || undefined,
                                 description: editEventData.description || undefined,
                                 location: editEventData.location || undefined,
-                                clubId: editEventData.clubId
+                                clubId: editEventData.clubId,
+                                isSacPriority: editEventData.isSacPriority
                               });
                               toast.success('Event updated');
                               setEditingEvent(null);
@@ -480,12 +508,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
                 ) : (
                   <>
                     <div className="flex-1 min-w-0 mb-2 sm:mb-0">
-                      <div className={`font-medium truncate ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>{event.title}</div>
+                      <div className={`font-medium truncate ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>
+                        {event.title}
+                        {event.isSacPriority && <span className="ml-1 text-yellow-500">⭐</span>}
+                      </div>
                       <div className={`text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>{mounted ? new Date(event.date).toDateString() : ''} {event.time}</div>
                       {event.location && <div className={`text-xs ${isLight ? 'text-gray-500' : 'text-gray-500'}`}>📍 {event.location}</div>}
                       {club && <div className={`text-xs mt-0.5 ${isLight ? 'text-gray-500' : 'text-gray-500'}`}>{club.name}</div>}
+                      {(event.recurringEventId || event.recurrence) && (
+                        <div className={`text-xs mt-0.5 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>
+                          🔄 Recurring Event
+                        </div>
+                      )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <button
                         onClick={() => {
                           setEditingEvent(event.id);
@@ -500,19 +536,42 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
                             frequency: event.recurrence?.frequency || 'weekly',
                             interval: event.recurrence?.interval || 1,
                             until: event.recurrence?.until || '',
-                            count: event.recurrence?.count?.toString() || ''
+                            count: event.recurrence?.count?.toString() || '',
+                            isSacPriority: event.isSacPriority || false
                           });
                         }}
                         className={`${isLight ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} px-3 py-1 rounded text-sm flex items-center gap-2`}
                       >
                         Edit
                       </button>
-                      <button
-                        onClick={() => { if (confirm('Delete event?')) { onDeleteEvent(event.id); toast.success('Deleted event'); } }}
-                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors flex-shrink-0 flex items-center gap-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => { 
+                            if (confirm('Delete this event only?')) { 
+                              onDeleteEvent(event.id); 
+                              toast.success('Deleted event'); 
+                            } 
+                          }}
+                          className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors flex-shrink-0 flex items-center gap-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                        {(event.recurringEventId || event.recurrence) && (
+                          <button
+                            onClick={() => { 
+                              if (confirm('Delete ALL future occurrences of this recurring event?')) { 
+                                onDeleteEvent(event.id, true); 
+                                toast.success('Deleted all future occurrences'); 
+                              } 
+                            }}
+                            className="px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm transition-colors flex-shrink-0 flex items-center gap-2"
+                            title="Delete all future occurrences"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span className="hidden sm:inline">All</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </>
                 )}

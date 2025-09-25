@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   if (!isAuthorizedDevFallback(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = await req.json();
-  const { title, description, date, time, clubId, recurrence, location } = body;
+  const { title, description, date, time, clubId, recurrence, location, isSacPriority } = body;
   if (!title || !date || !clubId) return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   try {
     // If recurrence provided, expand
@@ -54,6 +54,30 @@ export async function POST(req: NextRequest) {
       let current = new Date(date);
       let count = 0;
       const until = recurrence.until ? new Date(recurrence.until) : undefined;
+      
+      // Create the first event to get the recurring event ID
+      const firstEvent = await prisma.event.create({
+        data: {
+          title,
+          description,
+          location,
+          date: current,
+          time,
+          clubId,
+          isSacPriority: isSacPriority || false,
+          recurrenceFrequency: 'WEEKLY',
+          recurrenceInterval: interval,
+          recurrenceCount: recurrence.count,
+          recurrenceUntil: recurrence.until ? new Date(recurrence.until) : undefined,
+          recurringEventId: null // This is the original event
+        }
+      });
+      created.push(firstEvent);
+      
+      // Create subsequent events with the first event's ID as recurringEventId
+      current = new Date(current.getTime() + interval * 7 * 24 * 60 * 60 * 1000);
+      count++;
+      
       while (count < max) {
         if (until && current > until) break;
         const e = await prisma.event.create({
@@ -64,10 +88,12 @@ export async function POST(req: NextRequest) {
             date: current,
             time,
             clubId,
+            isSacPriority: isSacPriority || false,
             recurrenceFrequency: 'WEEKLY',
             recurrenceInterval: interval,
             recurrenceCount: recurrence.count,
-            recurrenceUntil: recurrence.until ? new Date(recurrence.until) : undefined
+            recurrenceUntil: recurrence.until ? new Date(recurrence.until) : undefined,
+            recurringEventId: firstEvent.id
           }
         });
         created.push(e);
@@ -77,7 +103,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(created, { status: 201 });
     } else {
       const event = await prisma.event.create({
-  data: { title, description, location, date: new Date(date), time, clubId }
+  data: { title, description, location, date: new Date(date), time, clubId, isSacPriority: isSacPriority || false }
       });
       return NextResponse.json(event, { status: 201 });
     }
@@ -104,10 +130,34 @@ export async function DELETE(req: NextRequest) {
   if (!isAuthorizedDevFallback(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
+  const deleteAllFuture = searchParams.get('deleteAllFuture') === 'true';
+  
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+  
   try {
-    await prisma.event.delete({ where: { id } });
-    return NextResponse.json({ success: true });
+    if (deleteAllFuture) {
+      // Find the original recurring event
+      const event = await prisma.event.findUnique({ where: { id } });
+      if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+      
+      const recurringEventId = event.recurringEventId || event.id;
+      
+      // Delete all events in this recurring series
+      await prisma.event.deleteMany({
+        where: {
+          OR: [
+            { id: recurringEventId },
+            { recurringEventId: recurringEventId }
+          ]
+        }
+      });
+      
+      return NextResponse.json({ success: true, message: 'All future occurrences deleted' });
+    } else {
+      // Delete only this specific event
+      await prisma.event.delete({ where: { id } });
+      return NextResponse.json({ success: true, message: 'Event deleted' });
+    }
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
