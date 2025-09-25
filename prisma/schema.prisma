@@ -10,7 +10,7 @@
 // "file:./dev.db") or by using a separate schema. For production/deployment
 // point DATABASE_URL to your Supabase Postgres connection string.
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

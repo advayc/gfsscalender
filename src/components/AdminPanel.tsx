@@ -412,9 +412,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
       <div className={`p-4 rounded-lg ${sectionCard}`}>
         <h3 className={`text-lg font-medium mb-3 ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>Existing Events</h3>
         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-          {events.map(event => {
-            const club = clubs.find(c => c.id === event.clubId);
-            return (
+          {(() => {
+            // Group recurring events by their recurringEventId or id
+            const groupedEvents = new Map<string, Event[]>();
+            const singleEvents: Event[] = [];
+            
+            events.forEach(event => {
+              if (event.recurringEventId || event.recurrence) {
+                // This is a recurring event
+                const groupId = event.recurringEventId || event.id;
+                if (!groupedEvents.has(groupId)) {
+                  groupedEvents.set(groupId, []);
+                }
+                groupedEvents.get(groupId)!.push(event);
+              } else {
+                // This is a single event
+                singleEvents.push(event);
+              }
+            });
+            
+            // Create display list: single events + one representative from each recurring group
+            const displayEvents: Event[] = [
+              ...singleEvents,
+              ...Array.from(groupedEvents.values()).map(group => {
+                // Return the first event from each group as the representative
+                return group.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0];
+              })
+            ];
+            
+            return displayEvents.map(event => {
+              const club = clubs.find(c => c.id === event.clubId);
+              const isRecurringGroup = groupedEvents.has(event.id) || groupedEvents.has(event.recurringEventId || '');
+              const recurringCount = isRecurringGroup ? 
+                (groupedEvents.get(event.recurringEventId || event.id) || []).length : 0;
+              
+              return (
               <div key={event.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-md transition-colors ${listItem}`}>
                 {editingEvent === event.id ? (
                   <div className="flex-1 space-y-2">
@@ -512,12 +544,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
                         {event.title}
                         {event.isSacPriority && <span className="ml-1 text-yellow-500">⭐</span>}
                       </div>
-                      <div className={`text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>{mounted ? new Date(event.date).toDateString() : ''} {event.time}</div>
+                      <div className={`text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+                        {mounted ? new Date(event.date).toDateString() : ''} {event.time}
+                        {isRecurringGroup && recurringCount > 1 && (
+                          <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                            +{recurringCount - 1} more
+                          </span>
+                        )}
+                      </div>
                       {event.location && <div className={`text-xs ${isLight ? 'text-gray-500' : 'text-gray-500'}`}>📍 {event.location}</div>}
                       {club && <div className={`text-xs mt-0.5 ${isLight ? 'text-gray-500' : 'text-gray-500'}`}>{club.name}</div>}
-                      {(event.recurringEventId || event.recurrence) && (
+                      {isRecurringGroup && (
                         <div className={`text-xs mt-0.5 ${isLight ? 'text-blue-600' : 'text-blue-400'}`}>
-                          🔄 Recurring Event
+                          🔄 Recurring Event ({recurringCount} occurrences)
                         </div>
                       )}
                     </div>
