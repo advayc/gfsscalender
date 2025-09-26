@@ -5,6 +5,12 @@ import { Calendar as CalendarIcon, Clock, Repeat, PlusCircle, Save, Trash2, Exte
 import toast, { Toaster } from 'react-hot-toast';
 import { Event, Club } from '@/types';
 
+// Extended Event type for display purposes
+interface DisplayEvent extends Event {
+  _seriesCount?: number;
+  _seriesEvents?: Event[];
+}
+
 interface AdminPanelProps {
   events: Event[];
   clubs: Club[];
@@ -14,10 +20,12 @@ interface AdminPanelProps {
   onUpdateEvent?: (eventId: string, changes: Partial<Event>) => void;
   onAddClub?: (club: { name: string; slug?: string; color?: string }) => Promise<Club | undefined> | void;
   onDeleteClub?: (clubId: string) => void;
+  onDeleteEventSeries?: (title: string, clubId: string, frequency: string) => Promise<void>;
+  onUpdateEventSeries?: (title: string, clubId: string, frequency: string, changes: Partial<Event>) => Promise<unknown>;
   theme?: 'light' | 'dark';
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDeleteEvent, onUpdateClub, onUpdateEvent, onAddClub, onDeleteClub, theme = 'light' }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDeleteEvent, onUpdateClub, onUpdateEvent, onAddClub, onDeleteClub, onDeleteEventSeries, onUpdateEventSeries, theme = 'light' }) => {
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
   interface NewEventState {
@@ -73,6 +81,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
   });
   const [eventSearch, setEventSearch] = useState('');
 
+  // Helper function to get all events in a recurring series
+  const getSeriesEvents = (event: Event) => {
+    if (!(event.recurrence || event.recurrenceFrequency)) return [event];
+    const freq = event.recurrence?.frequency || event.recurrenceFrequency || '';
+    const key = `${event.title}||${event.clubId}||${freq}`;
+    return events.filter(e => {
+      const eFreq = e.recurrence?.frequency || e.recurrenceFrequency || '';
+      const eKey = `${e.title}||${e.clubId}||${eFreq}`;
+      return eKey === key;
+    });
+  };
+
+  // Helper function to delete entire series
+  const handleDeleteSeries = async (event: Event) => {
+    const seriesEvents = getSeriesEvents(event);
+    const isRecurring = seriesEvents.length > 1;
+    
+    const confirmMessage = isRecurring 
+      ? `Delete entire "${event.title}" series (${seriesEvents.length} events)?`
+      : 'Delete event?';
+    
+    if (confirm(confirmMessage)) {
+      try {
+        if (isRecurring && onDeleteEventSeries) {
+          // Use the new series delete API
+          const freq = event.recurrence?.frequency || event.recurrenceFrequency || '';
+          await onDeleteEventSeries(event.title, event.clubId, freq);
+          toast.success('Deleted entire series');
+        } else {
+          // Single event deletion
+          onDeleteEvent(event.id);
+          toast.success('Deleted event');
+        }
+      } catch {
+        toast.error('Failed to delete series');
+      }
+    }
+  };
+
   const displayedEvents = useMemo(() => {
     const q = eventSearch.trim().toLowerCase();
     const filtered = q ? events.filter(e => e.title.toLowerCase().includes(q)) : events.slice();
@@ -90,7 +137,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
         singles.push(ev);
       }
     });
-    const seriesFirst = Array.from(seriesMap.values()).map(group => group.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())[0]);
+    const seriesFirst = Array.from(seriesMap.values()).map(group => {
+      const sorted = group.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      return { ...sorted[0], _seriesCount: group.length, _seriesEvents: group };
+    });
     return [...singles, ...seriesFirst].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [events, eventSearch]);
 
@@ -478,20 +528,126 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
                         <option key={club.id} value={club.id}>{club.name}</option>
                       ))}
                     </select>
+                    
+                    {/* Recurrence options for recurring events */}
+                    {(event.recurrence || event.recurrenceFrequency) && (
+                      <div className={`space-y-3 pt-3 mt-2 ${isLight ? 'border-t border-gray-200' : 'border-t border-[#2a2c2e]'}`}>
+                        <label className={`flex items-center gap-2 text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+                          <input
+                            type="checkbox"
+                            checked={editEventData.recurrence}
+                            onChange={(q) => setEditEventData({ ...editEventData, recurrence: q.target.checked })}
+                          />
+                          <Repeat className="w-4 h-4" />
+                          Keep as recurring event
+                        </label>
+                        {editEventData.recurrence && (
+                          <div className="space-y-3 pl-6 border-l-2 border-gray-300">
+                            <div>
+                              <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-gray-700' : 'text-gray-300'}`}>Repeat every</label>
+                              <div className="flex gap-2 items-center">
+                                <input 
+                                  type="number" 
+                                  min={1} 
+                                  max={30} 
+                                  value={editEventData.interval} 
+                                  onChange={(e) => setEditEventData({ ...editEventData, interval: parseInt(e.target.value) || 1 })} 
+                                  className={fieldClass(true)} 
+                                  style={{ width: '60px' }} 
+                                />
+                                <select 
+                                  className={fieldClass(true)} 
+                                  value={editEventData.frequency} 
+                                  onChange={(e) => setEditEventData({ ...editEventData, frequency: e.target.value as NewEventState['frequency'] })}
+                                >
+                                  <option value="daily">day(s)</option>
+                                  <option value="weekly">week(s)</option>
+                                  <option value="monthly">month(s)</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div>
+                              <label className={`block text-sm font-medium mb-1 ${isLight ? 'text-gray-700' : 'text-gray-300'}`}>End condition</label>
+                              <div className="space-y-2">
+                                <div className="flex gap-2 items-center">
+                                  <label className="text-sm">Count:</label>
+                                  <input 
+                                    type="number" 
+                                    min={1} 
+                                    max={999} 
+                                    value={editEventData.count} 
+                                    onChange={(e) => setEditEventData({ ...editEventData, count: e.target.value })} 
+                                    className={fieldClass(true)} 
+                                    style={{ width: '80px' }} 
+                                    placeholder="∞"
+                                  />
+                                </div>
+                                <div className="flex gap-2 items-center">
+                                  <label className="text-sm">Until:</label>
+                                  <input 
+                                    type="date" 
+                                    value={editEventData.until} 
+                                    onChange={(e) => setEditEventData({ ...editEventData, until: e.target.value })} 
+                                    className={fieldClass(true)} 
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
                     <div className="flex gap-2">
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (editEventData.title && editEventData.date && editEventData.clubId) {
                             if (onUpdateEvent) {
-                              onUpdateEvent(event.id, {
-                                title: editEventData.title,
-                                date: editEventData.date,
-                                time: editEventData.time || undefined,
-                                description: editEventData.description || undefined,
-                                location: editEventData.location || undefined,
-                                clubId: editEventData.clubId
-                              });
-                              toast.success('Event updated');
+                              const seriesEvents = getSeriesEvents(event);
+                              const isRecurring = seriesEvents.length > 1;
+                              
+                              if (isRecurring) {
+                                const updateSeries = confirm(`Update entire "${event.title}" series (${seriesEvents.length} events)?`);
+                                if (updateSeries && onUpdateEventSeries) {
+                                  // Update entire series using the new API
+                                  try {
+                                    const freq = event.recurrence?.frequency || event.recurrenceFrequency || '';
+                                    await onUpdateEventSeries(event.title, event.clubId, freq, {
+                                      title: editEventData.title,
+                                      time: editEventData.time || undefined,
+                                      description: editEventData.description || undefined,
+                                      location: editEventData.location || undefined,
+                                      clubId: editEventData.clubId
+                                      // Note: We don't update date for series to maintain the recurrence pattern
+                                    });
+                                    toast.success('Updated entire series');
+                                  } catch {
+                                    toast.error('Failed to update series');
+                                  }
+                                } else {
+                                  // Update only this event
+                                  onUpdateEvent(event.id, {
+                                    title: editEventData.title,
+                                    date: editEventData.date,
+                                    time: editEventData.time || undefined,  
+                                    description: editEventData.description || undefined,
+                                    location: editEventData.location || undefined,
+                                    clubId: editEventData.clubId
+                                  });
+                                  toast.success('Updated single event');
+                                }
+                              } else {
+                                // Single event update
+                                onUpdateEvent(event.id, {
+                                  title: editEventData.title,
+                                  date: editEventData.date,
+                                  time: editEventData.time || undefined,
+                                  description: editEventData.description || undefined,
+                                  location: editEventData.location || undefined,
+                                  clubId: editEventData.clubId
+                                });
+                                toast.success('Event updated');
+                              }
                               setEditingEvent(null);
                             }
                           }
@@ -512,7 +668,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
                   <>
                     <div className="flex-1 min-w-0 mb-2 sm:mb-0 flex items-center gap-2">
                       <div className="flex-1 min-w-0">
-                        <div className={`font-medium truncate ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>{event.title}</div>
+                        <div className={`font-medium truncate ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>
+                          {event.title}
+                          {(event as DisplayEvent)._seriesCount && (event as DisplayEvent)._seriesCount! > 1 && (
+                            <span className={`ml-2 text-xs px-2 py-1 rounded ${isLight ? 'bg-blue-100 text-blue-800' : 'bg-blue-900 text-blue-200'}`}>
+                              Series ({(event as DisplayEvent)._seriesCount})
+                            </span>
+                          )}
+                        </div>
                         <div className={`text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>{mounted ? new Date(event.date).toDateString() : ''} {event.time}</div>
                         {event.location && <div className={`text-xs ${isLight ? 'text-gray-500' : 'text-gray-500'}`}>📍 {event.location}</div>}
                         {club && <div className={`text-xs mt-0.5 ${isLight ? 'text-gray-500' : 'text-gray-500'}`}>{club.name}</div>}
@@ -544,7 +707,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
                         Edit
                       </button>
                       <button
-                        onClick={() => { if (confirm('Delete event?')) { onDeleteEvent(event.id); toast.success('Deleted event'); } }}
+                        onClick={() => handleDeleteSeries(event)}
                         className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm transition-colors flex-shrink-0 flex items-center gap-2"
                       >
                         <Trash2 className="w-4 h-4" />
