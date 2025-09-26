@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Calendar from '@/components/Calendar';
 import ClubFilter from '@/components/ClubFilter';
+import Watermark from '@/components/Watermark';
 // AdminPanel moved to a secret route; keep main app lean
 import { ClubProvider } from '@/context/ClubContext';
 import { Event, Club } from '@/types';
@@ -109,6 +110,7 @@ const CalendarApp: React.FC = () => {
             >{theme === 'light' ? <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M21.752 15.002A9.718 9.718 0 0 1 12.999 22C7.476 22 3 17.523 3 12a9.718 9.718 0 0 1 6.998-8.752.75.75 0 0 1 .92.92A8.218 8.218 0 0 0 11 12c0 4.075 3.06 7.437 6.832 7.832a.75.75 0 0 1 .92.92Z"/></svg> : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12Zm0 4a.75.75 0 0 1-.75-.75v-1.5a.75.75 0 0 1 1.5 0v1.5A.75.75 0 0 1 12 22Zm0-16a.75.75 0 0 1-.75-.75V3.75a.75.75 0 0 1 1.5 0v1.5A.75.75 0 0 1 12 6Z"/></svg>}</button>
           </div>
         </div>
+        <Watermark theme={theme} />
         <Toaster />
         {/* Admin UI moved to /glenforestsacadmindash */}
 
