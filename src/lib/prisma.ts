@@ -21,15 +21,12 @@ if (process.env.NODE_ENV === 'production') {
 	}
 }
 
-// Configure Prisma Client with optimal settings for serverless environments
+// Configure Prisma Client with optimal settings for serverless environments.
+// Skip datasources override when DATABASE_URL missing so construction
+// succeeds and per-query errors fall into route try/catch (synthetic fallback).
 export const prisma = globalForPrisma.prisma || new PrismaClient({
 	log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-	// Optimize for serverless/edge environments
-	datasources: {
-		db: {
-			url: process.env.DATABASE_URL,
-		},
-	},
+	...(process.env.DATABASE_URL ? { datasources: { db: { url: process.env.DATABASE_URL } } } : {}),
 });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
