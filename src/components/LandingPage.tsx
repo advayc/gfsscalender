@@ -27,19 +27,17 @@ export default function LandingPage() {
       <nav className="landing-nav" aria-label="Main navigation">
         <Link className="landing-brand" href="/">
           <span className="brand-symbol"><CalendarDays size={18} strokeWidth={2.5} /></span>
-          <span>GFSS / CALENDAR</span>
+          <span>GFSS Calendar</span>
         </Link>
         <div className="landing-nav-meta">
-          <span className="status-dot" aria-hidden="true" />
-          <span>STUDENT ACTIVITY COUNCIL</span>
-          <Link className="nav-link" href="/calendar">OPEN CALENDAR <ArrowUpRight size={15} /></Link>
+          <span>For Glenforest students</span>
+          <Link className="nav-link" href="/calendar">Open calendar <ArrowUpRight size={15} /></Link>
         </div>
       </nav>
 
       <section className="landing-hero">
-        <div className="hero-kicker"><span>01</span><span>ONE SHARED SCHEDULE</span><span>GFSS / MISSISSAUGA</span></div>
+        <div className="hero-kicker"><span>One shared schedule</span><span>Glenforest Secondary School</span></div>
         <div className="hero-copy">
-          <p className="hero-index">[ CLUBS / EVENTS / MEETINGS ]</p>
           <h1>Everything happening<br /><em>at GFSS.</em></h1>
           <p className="hero-description">One clear place for every club, meeting, and school event. Find your next thing without digging through scattered posts.</p>
           <div className="hero-actions">
@@ -47,26 +45,36 @@ export default function LandingPage() {
             <a className="text-action" href="#about">See how it works <ChevronDown size={17} /></a>
           </div>
         </div>
-        <div className="hero-stamp" aria-hidden="true">
-          <span>FIELD</span><strong>01</strong><span>ACTIVE</span>
-        </div>
+        <CalendarPreview />
       </section>
 
       <section className="landing-specs" id="about">
-        <div className="section-label"><span>02</span><span>BUILT FOR GFSS</span></div>
         <div className="spec-grid">
-          <article><span className="spec-number">A / 01</span><h2>See the whole week.</h2><p>Switch from a full month to the details of a single day and keep every commitment in view.</p></article>
-          <article><span className="spec-number">B / 02</span><h2>Find your clubs.</h2><p>Filter the calendar by the groups you care about, with colors that make scanning effortless.</p></article>
-          <article><span className="spec-number">C / 03</span><h2>Show up ready.</h2><p>Open an event for the time, place, and notes you need before you head out.</p></article>
+          <article><span className="spec-number">The week</span><h2>See what&apos;s ahead.</h2><p>Move from a full month to the details of a single day and keep every commitment in view.</p></article>
+          <article><span className="spec-number">Your clubs</span><h2>Find your people.</h2><p>Filter the calendar by the groups you care about, with colors that make scanning effortless.</p></article>
+          <article><span className="spec-number">Your plans</span><h2>Show up ready.</h2><p>Open an event for the time, place, and notes you need before you head out.</p></article>
         </div>
       </section>
 
       <section className="mountain-section" aria-label="A clear view of what's ahead">
-        <div className="mountain-heading"><span>03 / THE VIEW AHEAD</span><p>A shared map of<br /><strong>what&apos;s next.</strong></p></div>
-        <div className="mountain-frame"><MountainMark /><span className="mountain-caption">Glenforest Secondary School<br />Student life, in one view.</span><span className="mountain-coordinate">43°35&apos;N / 79°38&apos;W</span></div>
+        <div className="mountain-heading"><span>The view ahead</span><p>A shared calendar of<br /><strong>what&apos;s next.</strong></p></div>
+        <div className="mountain-frame"><MountainMark /></div>
       </section>
 
-      <footer className="landing-footer"><span>GFSS CALENDAR</span><span>MADE FOR THE PEOPLE WHO MAKE SCHOOL HAPPEN</span><Link href="/calendar">VIEW CALENDAR <ArrowUpRight size={15} /></Link></footer>
     </main>
+  );
+}
+
+function CalendarPreview() {
+  return (
+    <div className="calendar-preview" aria-label="Preview of the GFSS calendar">
+      <div className="preview-topbar"><span>September 2026</span><span>Month view</span></div>
+      <div className="preview-weekdays"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div>
+      <div className="preview-grid">
+        <span>14</span><span>15</span><span className="preview-today">16</span><span>17</span><span>18</span>
+        <span>21</span><span className="preview-event preview-blue">SAC meeting</span><span>23</span><span className="preview-event preview-orange">Robotics club</span><span>25</span>
+      </div>
+      <div className="preview-event-list"><div><i className="event-dot event-dot-orange" />Robotics club<span>3:30 PM</span></div><div><i className="event-dot event-dot-blue" />SAC meeting<span>Lunch</span></div></div>
+    </div>
   );
 }

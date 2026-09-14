@@ -6,6 +6,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { Event, Club } from '@/types';
 import EventFilters, { EventFilterState } from './EventFilters';
 import { applyEventFilters } from '@/utils/eventFilters';
+import { parseIcs, IcsImportEvent } from '@/lib/ics';
 
 interface AdminPanelProps {
   events: Event[];
@@ -60,6 +61,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
   const [editClubData, setEditClubData] = useState({ name: '', color: '' });
 
   const [editingEvent, setEditingEvent] = useState<string | null>(null);
+  const [icsEvents, setIcsEvents] = useState<IcsImportEvent[]>([]);
+  const [icsClubId, setIcsClubId] = useState('');
+  const [icsName, setIcsName] = useState('');
+  const [importing, setImporting] = useState(false);
   const [editEventData, setEditEventData] = useState<NewEventState>({
     title: '',
     date: '',
@@ -287,6 +292,70 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ events, clubs, onAddEvent, onDe
             </button>
           </div>
         </form>
+      </div>
+
+      <div className={`p-4 rounded-lg ${sectionCard}`}>
+        <h3 className={`text-lg font-medium mb-3 ${isLight ? 'text-gray-800' : 'text-gray-200'}`}>Import .ics</h3>
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="file"
+              accept=".ics,text/calendar"
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                try {
+                  const text = await f.text();
+                  const parsed = parseIcs(text);
+                  setIcsEvents(parsed);
+                  setIcsName(f.name);
+                  if (!parsed.length) toast.error('No events found in file');
+                } catch {
+                  toast.error('Failed to parse .ics file');
+                }
+              }}
+              className={`text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}
+            />
+            <select value={icsClubId} onChange={(e) => setIcsClubId(e.target.value)} className={fieldClass()} required>
+              <option value="">Select Club</option>
+              {clubs.map(club => (
+                <option key={club.id} value={club.id}>{club.name}</option>
+              ))}
+            </select>
+          </div>
+          {icsEvents.length > 0 && (
+            <div className={`text-sm ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>
+              {icsName}: {icsEvents.length} event{icsEvents.length === 1 ? '' : 's'} found
+              {icsEvents.length > 200 ? ' (capped at 200 per recurring series)' : ''}. Preview:
+              <ul className="mt-1 space-y-0.5 max-h-32 overflow-y-auto">
+                {icsEvents.slice(0, 5).map((ev, i) => (
+                  <li key={i} className="truncate">• {ev.title} — {ev.date}{ev.time ? ` ${ev.time}` : ''}</li>
+                ))}
+                {icsEvents.length > 5 && <li>…and {icsEvents.length - 5} more</li>}
+              </ul>
+            </div>
+          )}
+          <button
+            disabled={!icsEvents.length || !icsClubId || importing}
+            onClick={async () => {
+              if (!icsClubId) { toast.error('Select a club first'); return; }
+              setImporting(true);
+              let ok = 0;
+              for (const ev of icsEvents) {
+                try {
+                  await onAddEvent({ title: ev.title, date: ev.date, time: ev.time, description: ev.description, location: ev.location, clubId: icsClubId });
+                  ok++;
+                } catch { /* keep going */ }
+              }
+              setImporting(false);
+              toast.success(`Imported ${ok}/${icsEvents.length} events`);
+              if (ok === icsEvents.length) { setIcsEvents([]); setIcsName(''); }
+            }}
+            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-md transition-colors font-medium"
+          >
+            {importing ? 'Importing…' : `Import ${icsEvents.length ? `${icsEvents.length} event${icsEvents.length === 1 ? '' : 's'}` : '.ics'}`}
+          </button>
+        </div>
       </div>
 
       <div className={`p-4 rounded-lg ${sectionCard}`}>
