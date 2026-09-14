@@ -56,7 +56,19 @@ const CalendarApp: React.FC = () => {
         setClubs(remoteClubs.map((c) => ({ id: c.id, name: c.name, color: c.color, enabled: c.enabled ?? true, prioritized: (c as Club).prioritized || false })));
       } catch {
         // DB/API failed: show synthetic data from backup snapshot
-        setEvents(SYNTHETIC_EVENTS.map((e) => ({ ...e, date: e.date.slice(0, 10) })));
+        setEvents(SYNTHETIC_EVENTS.map((e) => ({
+          id: e.id,
+          title: e.title,
+          clubId: e.clubId,
+          date: e.date.slice(0, 10),
+          description: e.description ?? undefined,
+          location: e.location ?? undefined,
+          time: e.time ?? undefined,
+          recurrenceFrequency: e.recurrenceFrequency ?? undefined,
+          recurrenceInterval: e.recurrenceInterval ?? undefined,
+          recurrenceCount: e.recurrenceCount ?? undefined,
+          recurrenceUntil: e.recurrenceUntil ?? undefined,
+        })));
         setClubs(SYNTHETIC_CLUBS.map((c) => ({ id: c.id, name: c.name, color: c.color, enabled: c.enabled, prioritized: c.prioritized })));
       }
     };
