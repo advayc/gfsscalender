@@ -1,16 +1,15 @@
-export interface Course {
+export interface Club {
   id: string;
   name: string;
   color: string;
   enabled: boolean;
-  grade: 'DP1' | 'DP2'; // For filtering by grade level
   prioritized?: boolean;
 }
 
 export interface Event {
   id: string;
   title: string;
-  courseId: string;
+  clubId: string;
   date: string; // ISO date string
   time?: string;
   description?: string;
@@ -30,9 +29,6 @@ export interface Event {
   recurrenceUntil?: string;
   recurrenceGroupId?: string; // Group ID to identify all events in the same recurring series
 }
-
-// Legacy type alias for backwards compatibility during migration
-export type Club = Course;
 
 export interface CalendarDay {
   date: Date;

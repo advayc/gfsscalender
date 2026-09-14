@@ -1,1 +1,1 @@
-> minimalistic notion calendar inspired calendar app for ib students to keep track of deadlines and assignments across their courses
+> cal app

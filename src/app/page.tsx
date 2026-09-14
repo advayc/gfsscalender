@@ -1,5 +1,5 @@
-import CalendarApp from '@/components/CalendarApp';
+import LandingPage from '@/components/LandingPage';
 
 export default function Home() {
-  return <CalendarApp />;
+  return <LandingPage />;
 }

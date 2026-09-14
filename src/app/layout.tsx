@@ -13,11 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IB Student Calendar",
-  description: "Track deadlines and assignments across IB courses",
-  icons: {
-    icon: '/favicon.png',
-  },
+  title: "GFSS Calendar | Glenforest Student Activity Council",
+  description: "One clear place for every club, meeting, and school event at Glenforest Secondary School.",
 };
 
 export default function RootLayout({

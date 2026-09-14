@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { getCalendarDays, getDayNumber, getNextMonth, getPreviousMonth } from '@/utils/dateUtils';
-import { useCourses } from '@/context/CourseContext';
+import { useClubs } from '@/context/ClubContext';
 import { Event, Club } from '@/types';
 import EventCard from './EventCard';
 import MonthNavigation from './MonthNavigation';
@@ -24,7 +24,7 @@ const Calendar: React.FC<CalendarProps> = ({ events, clubs, controlledDate, onDa
   const setCurrentDate = (d: Date) => {
     if (onDateChange) onDateChange(d); else setInternalDate(d);
   };
-  const { enabledCourseIds } = useCourses();
+  const { enabledClubIds, prioritizedClubIds } = useClubs();
 
   const clubsMap = useMemo(() => {
     return clubs.reduce((acc, club) => {
@@ -34,8 +34,8 @@ const Calendar: React.FC<CalendarProps> = ({ events, clubs, controlledDate, onDa
   }, [clubs]);
 
   const filteredEvents = useMemo(() => {
-    return events.filter(event => enabledCourseIds.includes(event.courseId));
-  }, [events, enabledCourseIds]);
+    return events.filter(event => enabledClubIds.includes(event.clubId));
+  }, [events, enabledClubIds]);
 
   const calendarDays = useMemo(() => {
     return getCalendarDays(currentDate, filteredEvents);
@@ -115,7 +115,12 @@ const Calendar: React.FC<CalendarProps> = ({ events, clubs, controlledDate, onDa
                   {(() => {
                     const maxVisible = 4;
                     const sortedEvents = [...day.events].sort((a, b) => {
-                      // Sort by time ascending (empty time last)
+                      // Prioritize SAC/genforestsac/sac events (bolded, always at top)
+                      const aPrior = prioritizedClubIds.includes(a.clubId);
+                      const bPrior = prioritizedClubIds.includes(b.clubId);
+                      if (aPrior && !bPrior) return -1;
+                      if (!aPrior && bPrior) return 1;
+                      // If both same priority, sort by time ascending (empty time last)
                       const aTime = a.time || '';
                       const bTime = b.time || '';
                       if (aTime && bTime) {
@@ -132,9 +137,9 @@ const Calendar: React.FC<CalendarProps> = ({ events, clubs, controlledDate, onDa
                     return (
                       <>
                         {visible.map(event => {
-                          const club = clubsMap[event.courseId];
+                          const club = clubsMap[event.clubId];
                           if (!club) return null;
-                          return <EventCard key={event.id} event={event} club={club} onClick={() => onSelectEvent?.(event)} theme={theme} />;
+                          return <EventCard key={event.id} event={event} club={club} onClick={() => onSelectEvent?.(event)} theme={theme} isPrioritized={prioritizedClubIds.includes(event.clubId)} />;
                         })}
                         {hiddenCount > 0 && (
                           <div className={`text-[10px] ml-2 mt-1 ${isLight ? 'text-gray-400' : 'text-gray-500'}`}>+{hiddenCount} more</div>
