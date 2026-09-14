@@ -59,7 +59,7 @@ const WeeklyCalendarPage: React.FC = () => {
 
   const handleViewChange = (view: ViewType) => {
     if (view === 'month') {
-      router.push('/');
+      router.push('/calendar');
     } else {
       setCurrentView(view);
     }
