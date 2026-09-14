@@ -15,6 +15,21 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "GFSS Calendar | Glenforest Student Activity Council",
   description: "One clear place for every club, meeting, and school event at Glenforest Secondary School.",
+  icons: {
+    icon: "/gfss-calendar-mark.svg",
+  },
+  openGraph: {
+    title: "GFSS Calendar",
+    description: "Find every club, meeting, and school event at Glenforest Secondary School.",
+    type: "website",
+    images: ["/gfss-calendar-mark.svg"],
+  },
+  twitter: {
+    card: "summary",
+    title: "GFSS Calendar",
+    description: "The shared calendar for Glenforest students.",
+    images: ["/gfss-calendar-mark.svg"],
+  },
 };
 
 export default function RootLayout({

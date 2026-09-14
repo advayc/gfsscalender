@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-labelledby="title desc">
+  <title id="title">GFSS Calendar mark</title>
+  <desc id="desc">A black calendar outline with a layered mountain inside</desc>
+  <rect width="120" height="120" rx="24" fill="#141414"/>
+  <path d="M31 27v11M89 27v11M25 43h70M31 19v15M89 19v15" fill="none" stroke="#f5f4f0" stroke-linecap="round" stroke-width="7"/>
+  <path d="M25 38h70v53H25z" fill="none" stroke="#f5f4f0" stroke-width="5"/>
+  <path d="m31 78 17-16 12 10 12-17 17 23" fill="none" stroke="#ff4d00" stroke-linecap="round" stroke-linejoin="round" stroke-width="6"/>
+  <path d="m31 84 20-17 11 9 11-13 16 21" fill="none" stroke="#f5f4f0" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+</svg>

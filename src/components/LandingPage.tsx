@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useState } from 'react';
 import { ArrowUpRight, CalendarDays, ChevronDown, MoveRight } from 'lucide-react';
 
 function MountainMark() {
@@ -66,15 +69,52 @@ export default function LandingPage() {
 }
 
 function CalendarPreview() {
+  const [view, setView] = useState<'month' | 'week' | 'day'>('month');
+
   return (
-    <div className="calendar-preview" aria-label="Preview of the GFSS calendar">
-      <div className="preview-topbar"><span>September 2026</span><span>Month view</span></div>
-      <div className="preview-weekdays"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div>
-      <div className="preview-grid">
-        <span>14</span><span>15</span><span className="preview-today">16</span><span>17</span><span>18</span>
-        <span>21</span><span className="preview-event preview-blue">SAC meeting</span><span>23</span><span className="preview-event preview-orange">Robotics club</span><span>25</span>
+    <div className="calendar-preview" aria-label="Interactive preview of the GFSS calendar">
+      <div className="preview-toolbar">
+        <div className="preview-topbar"><span>September 2026</span><span>GFSS Calendar</span></div>
+        <div className="preview-modes" role="group" aria-label="Calendar view">
+          {(['month', 'week', 'day'] as const).map((mode) => (
+            <button key={mode} className={view === mode ? 'preview-mode active' : 'preview-mode'} onClick={() => setView(mode)}>{mode}</button>
+          ))}
+        </div>
+      </div>
+      {view === 'month' && <MonthPreview />}
+      {view === 'week' && <WeekPreview />}
+      {view === 'day' && <DayPreview />}
+    </div>
+  );
+}
+
+function MonthPreview() {
+  return (
+    <div className="preview-view">
+      <div className="preview-month-title">September 2026</div>
+      <div className="preview-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+      <div className="preview-month-grid">
+        {['30', '31', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19'].map((date, index) => <span key={`${date}-${index}`} className={date === '14' ? 'preview-date today' : 'preview-date'}>{date}{date === '16' && <i className="mini-event art" />} {date === '17' && <i className="mini-event sac" />}</span>)}
       </div>
       <div className="preview-event-list"><div><i className="event-dot event-dot-orange" />Robotics club<span>3:30 PM</span></div><div><i className="event-dot event-dot-blue" />SAC meeting<span>Lunch</span></div></div>
+    </div>
+  );
+}
+
+function WeekPreview() {
+  return (
+    <div className="preview-view preview-schedule">
+      <div className="preview-month-title">Sep 13 - Sep 19, 2026</div>
+      <div className="schedule-grid"><div className="time-column"><span>9 AM</span><span>10 AM</span><span>11 AM</span><span>12 PM</span><span>1 PM</span><span>2 PM</span><span>3 PM</span></div><div className="schedule-days"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><i className="schedule-event art-event">Art Guild GM <small>11:07 AM</small></i><i className="schedule-event athletic-event">Athletic Council <small>8:30 AM</small></i><i className="schedule-event medlife-event">MEDLIFE meeting <small>2:40 PM</small></i></div></div>
+    </div>
+  );
+}
+
+function DayPreview() {
+  return (
+    <div className="preview-view preview-schedule">
+      <div className="preview-month-title">Wednesday, September 16, 2026</div>
+      <div className="day-schedule"><span>9 AM</span><span>10 AM</span><span>11 AM</span><span>12 PM</span><span>1 PM</span><span>2 PM</span><span>3 PM</span><i className="day-event art-event">Art Guild GM <small>11:07 AM</small></i><i className="day-event medlife-event">MEDLIFE General Meeting <small>2:40 PM</small></i></div>
     </div>
   );
 }
